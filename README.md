@@ -64,7 +64,10 @@ auto-load a file with this name):
 
 Point `DOMAIN`'s DNS A/AAAA record at this host and ensure ports 80/443 are
 reachable before starting, so Caddy can complete the Let's Encrypt HTTP-01
-challenge.
+challenge. `FLASK_PORT` (default 4000) is also published directly on the
+host, unproxied — open that in any firewall too if field Boondock Edge
+devices need to reach the API directly over plain HTTP/WebSocket rather
+than through Caddy.
 
 **API only (no dashboard UI):**
 

@@ -27,8 +27,15 @@ services:
       - boondock.env
     environment:
       BOONDOCK_DATA_ROOT: /data
-    expose:
-      - "${FLASK_PORT:-4000}"
+    # Published directly on the host (not just Caddy's 80/443) so field
+    # Boondock Edge devices can reach the API straight over plain
+    # HTTP/WebSocket on FLASK_PORT, bypassing the reverse proxy/TLS —
+    # matches how devices are configured with a host_ip/host_port pointing
+    # at this port (see Boondock-Edge-API's hotspot_setup.py). Make sure
+    # this port is allowed through any firewall in front of this host, in
+    # addition to 80/443.
+    ports:
+      - "${FLASK_PORT:-4000}:${FLASK_PORT:-4000}"
     volumes:
       - boondock_api_data:/data
     healthcheck:
