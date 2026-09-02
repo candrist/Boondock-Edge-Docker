@@ -1,0 +1,77 @@
+name: boondock-edge
+
+services:
+  api:
+    build:
+      context: ./Boondock-Edge-API
+      dockerfile: ../docker/api.Dockerfile
+    image: boondock-edge-api:local
+    container_name: boondock-edge-api
+    restart: unless-stopped
+    env_file:
+      - boondock.env
+    environment:
+      BOONDOCK_DATA_ROOT: /data
+    expose:
+      - "${FLASK_PORT:-4000}"
+    volumes:
+      - boondock_api_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:${FLASK_PORT:-4000}/api/health/system?current=true"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    networks:
+      - boondock
+
+  dashboard:
+    build:
+      context: ./Boondock-Edge-Dashboard
+      dockerfile: ../docker/dashboard.Dockerfile
+      args:
+        REACT_APP_EDGE_SERVER_ENDPOINT: ${REACT_APP_EDGE_SERVER_ENDPOINT}
+    image: boondock-edge-dashboard:local
+    container_name: boondock-edge-dashboard
+    restart: unless-stopped
+    expose:
+      - "80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:80/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    networks:
+      - boondock
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: boondock-edge-caddy
+    restart: unless-stopped
+    depends_on:
+      - api
+      - dashboard
+    env_file:
+      - boondock.env
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - boondock
+
+networks:
+  boondock:
+    name: boondock_net
+
+volumes:
+  boondock_api_data:
+    name: boondock_api_data
+  caddy_data:
+    name: boondock_caddy_data
+  caddy_config:
+    name: boondock_caddy_config

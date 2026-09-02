@@ -1,0 +1,9 @@
+# Secrets / local runtime config — never commit the real env file
+boondock.env
+
+# OS cruft
+.DS_Store
+
+# In case someone bind-mounts caddy state locally instead of using named volumes
+/caddy/data/
+/caddy/config/

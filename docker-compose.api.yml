@@ -1,0 +1,30 @@
+name: boondock-edge-api
+
+services:
+  api:
+    build:
+      context: ./Boondock-Edge-API
+      dockerfile: ../docker/api.Dockerfile
+    image: boondock-edge-api:local
+    container_name: boondock-edge-api
+    restart: unless-stopped
+    env_file:
+      - boondock.env
+    environment:
+      # Always keep this pinned to the mounted volume path below, regardless
+      # of what boondock.env sets, so data always lands on the volume.
+      BOONDOCK_DATA_ROOT: /data
+    ports:
+      - "${FLASK_PORT:-4000}:${FLASK_PORT:-4000}"
+    volumes:
+      - boondock_api_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:${FLASK_PORT:-4000}/api/health/system?current=true"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
+volumes:
+  boondock_api_data:
+    name: boondock_api_data

@@ -1,0 +1,9 @@
+[submodule "Boondock-Edge-API"]
+	path = Boondock-Edge-API
+	url = git@github.com:Boondock-Echo/Boondock-Edge-API.git
+	branch = main
+
+[submodule "Boondock-Edge-Dashboard"]
+	path = Boondock-Edge-Dashboard
+	url = git@github.com:Boondock-Echo/Boondock-Edge-Dashboard.git
+	branch = main

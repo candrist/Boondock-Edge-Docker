@@ -1,0 +1,20 @@
+name: boondock-edge-dashboard
+
+services:
+  dashboard:
+    build:
+      context: ./Boondock-Edge-Dashboard
+      dockerfile: ../docker/dashboard.Dockerfile
+      args:
+        REACT_APP_EDGE_SERVER_ENDPOINT: ${REACT_APP_EDGE_SERVER_ENDPOINT}
+    image: boondock-edge-dashboard:local
+    container_name: boondock-edge-dashboard
+    restart: unless-stopped
+    ports:
+      - "${DASHBOARD_PORT:-8080}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:80/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3

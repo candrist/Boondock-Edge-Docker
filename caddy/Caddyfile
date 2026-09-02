@@ -1,0 +1,26 @@
+{
+	# Let's Encrypt account email. For local testing without real public
+	# domains, see the "Local/staging testing" note in README.md instead of
+	# editing this file.
+	email {$CADDY_EMAIL}
+}
+
+{$API_DOMAIN} {
+	encode gzip
+	reverse_proxy api:{$FLASK_PORT}
+}
+
+{$APP_DOMAIN} {
+	encode gzip
+
+	# The Dashboard's live-audio/streaming features connect their Socket.IO
+	# client to `window.location.origin` (i.e. this app domain), NOT to
+	# REACT_APP_EDGE_SERVER_ENDPOINT (see StreamsSection.js / LiveAudioPopup.js
+	# in Boondock-Edge-Dashboard). Proxy just that path to the API container
+	# so those features keep working under subdomain-based routing without
+	# touching Dashboard code.
+	@socketio path /socket.io/*
+	reverse_proxy @socketio api:{$FLASK_PORT}
+
+	reverse_proxy dashboard:80
+}
