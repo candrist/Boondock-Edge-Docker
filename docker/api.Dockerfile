@@ -89,6 +89,27 @@ exec "$@"
 EOF
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
+# app/services/hotspot_service.py's _run_command() logs a full ERROR-level
+# traceback (logger.exception) whenever a command it shells out to (nmcli,
+# iw) isn't found — and _detect_wifi_interface_nmcli(), called once at
+# startup by the hotspot_setup background thread, calls nmcli directly
+# without the _command_available() guard other functions in that file use.
+# Containers have no Wi-Fi hardware/NetworkManager at all, so this always
+# fails the same way — it's a hardware-provisioning feature for the
+# physical Boondock device, meaningless here. Rather than patch the
+# submodule, sitecustomize.py is auto-imported by Python at interpreter
+# startup (before run.py even loads) and raises just this one logger's
+# level, silencing it (including its warnings, e.g. from hotspot
+# start/stop attempts — every code path in this module fails the same way
+# without real Wi-Fi hardware, so nothing of value is lost here). All other
+# loggers are unaffected. Remove this file if you ever pass real Wi-Fi
+# hardware through to this container and want to see those logs again.
+RUN cat > /usr/local/lib/python3.11/site-packages/sitecustomize.py <<'EOF'
+import logging
+
+logging.getLogger("app.services.hotspot_service").setLevel(logging.CRITICAL)
+EOF
+
 EXPOSE 4000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
