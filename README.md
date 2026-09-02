@@ -41,6 +41,14 @@ If you have push access and want to push over SSH instead of HTTPS:
     # REACT_APP_EDGE_SERVER_ENDPOINT (must end in /api), CORS_ALLOWED_ORIGINS,
     # and a real SECRET_KEY.
 
+Generate a `SECRET_KEY` value and paste it into `boondock.env`:
+
+    python3 -c "import secrets; print(secrets.token_hex(32))"
+
+If you leave `SECRET_KEY` blank, the API auto-generates and persists one to
+`$BOONDOCK_DATA_ROOT/db/.secret_key` on first boot instead — that works, but
+setting it explicitly makes rotation easier to reason about later.
+
 `boondock.env` is gitignored — never commit it.
 
 ### 3. Deploy
