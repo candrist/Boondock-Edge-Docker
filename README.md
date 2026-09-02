@@ -87,6 +87,7 @@ whichever compose file you deployed (swap `docker-compose.yml` for
     {
       "admin": { "email": "you@example.com", "password": "ChangeMe123!" },
       "selected_devices": [],
+      "wifi": {},
       "preferences": { "inbox_view": "continuous", "message_sorting": "newest" }
     }
     EOF
@@ -95,11 +96,20 @@ whichever compose file you deployed (swap `docker-compose.yml` for
     '
 
 Replace the email and password (8+ characters) before running it. Log in to
-the Dashboard with those credentials afterward. `selected_devices` and
-`wifi` are left at their defaults since there's no real Boondock Edge
-hardware/Wi-Fi to configure inside a container — see `load_setup()` in
-`Boondock-Edge-API/manage.py` for the full schema if you need to change
-that. Re-running this command is safe (`manage.py setup` applies idempotently),
+the Dashboard with those credentials afterward. `selected_devices` is left
+empty and `"wifi": {}` falls back to Boondock-Edge-API's internal-hotspot
+defaults, since there's no real Boondock Edge hardware/Wi-Fi to configure
+inside a container — see `load_setup()` in `Boondock-Edge-API/manage.py` for
+the full schema if you need to change that.
+
+`"wifi": {}` must be present (not omitted) here: `manage.py`'s
+`load_setup()` has a bug where omitting `wifi` entirely crashes with
+`KeyError: 'wifi'` (it only handles "wifi provided but invalid" vs "wifi
+provided and valid", not "wifi missing") — passing an empty-but-present
+object routes it into the same safe default-filling path without touching
+Boondock-Edge-API's own code. Worth reporting upstream if you have a way to.
+
+Re-running this command is safe (`manage.py setup` applies idempotently),
 but note it always resets the admin password to whatever's in the
 setup.json you pass, so don't re-run it casually once you've changed your
 password from the Dashboard.
