@@ -72,6 +72,38 @@ Point `API_DOMAIN` and `APP_DOMAIN`'s DNS A/AAAA records at this host and
 ensure ports 80/443 are reachable before starting the combined stack, so
 Caddy can complete the Let's Encrypt HTTP-01 challenge.
 
+### 4. Create the first admin login
+
+Boondock-Edge-API doesn't seed a default account — the admin login is
+normally created by a one-time setup step (`manage.py setup`) that the
+bare-metal installer runs automatically from `install.conf`'s
+`ADMIN_EMAIL`/`ADMIN_PASSWORD`. This Docker setup doesn't run that step for
+you, so without it there's nothing to log in with. Run it once, against
+whichever compose file you deployed (swap `docker-compose.yml` for
+`docker-compose.api.yml` if you're running the API standalone):
+
+    docker compose --env-file boondock.env -f docker-compose.yml exec api sh -c '
+      cat > /tmp/setup.json <<EOF
+    {
+      "admin": { "email": "you@example.com", "password": "ChangeMe123!" },
+      "selected_devices": [],
+      "preferences": { "inbox_view": "continuous", "message_sorting": "newest" }
+    }
+    EOF
+      python manage.py setup --config /tmp/setup.json
+      rm -f /tmp/setup.json
+    '
+
+Replace the email and password (8+ characters) before running it. Log in to
+the Dashboard with those credentials afterward. `selected_devices` and
+`wifi` are left at their defaults since there's no real Boondock Edge
+hardware/Wi-Fi to configure inside a container — see `load_setup()` in
+`Boondock-Edge-API/manage.py` for the full schema if you need to change
+that. Re-running this command is safe (`manage.py setup` applies idempotently),
+but note it always resets the admin password to whatever's in the
+setup.json you pass, so don't re-run it casually once you've changed your
+password from the Dashboard.
+
 ### Local/staging testing without real public DNS
 
 Either:
