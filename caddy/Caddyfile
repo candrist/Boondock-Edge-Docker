@@ -5,22 +5,10 @@
 	email {$CADDY_EMAIL}
 }
 
-{$API_DOMAIN} {
+# Single origin: Boondock-Edge-API serves both /api/* and the dashboard UI
+# itself (see docker/dashboard.Dockerfile), so there's only one site block
+# and no cross-origin/CORS or Socket.IO path special-casing to worry about.
+{$DOMAIN} {
 	encode gzip
 	reverse_proxy api:{$FLASK_PORT}
-}
-
-{$APP_DOMAIN} {
-	encode gzip
-
-	# The Dashboard's live-audio/streaming features connect their Socket.IO
-	# client to `window.location.origin` (i.e. this app domain), NOT to
-	# REACT_APP_EDGE_SERVER_ENDPOINT (see StreamsSection.js / LiveAudioPopup.js
-	# in Boondock-Edge-Dashboard). Proxy just that path to the API container
-	# so those features keep working under subdomain-based routing without
-	# touching Dashboard code.
-	@socketio path /socket.io/*
-	reverse_proxy @socketio api:{$FLASK_PORT}
-
-	reverse_proxy dashboard:80
 }

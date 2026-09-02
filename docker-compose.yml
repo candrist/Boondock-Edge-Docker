@@ -1,6 +1,18 @@
 name: boondock-edge
 
 services:
+  dashboard-build:
+    build:
+      context: ./Boondock-Edge-Dashboard
+      dockerfile: ../docker/dashboard.Dockerfile
+      args:
+        DISABLE_ESLINT_PLUGIN: ${DISABLE_ESLINT_PLUGIN:-true}
+    image: boondock-edge-dashboard-build:local
+    container_name: boondock-edge-dashboard-build
+    restart: "no"
+    volumes:
+      - boondock_api_data:/data
+
   api:
     build:
       context: ./Boondock-Edge-API
@@ -8,6 +20,9 @@ services:
     image: boondock-edge-api:local
     container_name: boondock-edge-api
     restart: unless-stopped
+    depends_on:
+      dashboard-build:
+        condition: service_completed_successfully
     env_file:
       - boondock.env
     environment:
@@ -25,34 +40,12 @@ services:
     networks:
       - boondock
 
-  dashboard:
-    build:
-      context: ./Boondock-Edge-Dashboard
-      dockerfile: ../docker/dashboard.Dockerfile
-      args:
-        REACT_APP_EDGE_SERVER_ENDPOINT: ${REACT_APP_EDGE_SERVER_ENDPOINT}
-        DISABLE_ESLINT_PLUGIN: ${DISABLE_ESLINT_PLUGIN:-true}
-    image: boondock-edge-dashboard:local
-    container_name: boondock-edge-dashboard
-    restart: unless-stopped
-    expose:
-      - "80"
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:80/health"]
-      interval: 30s
-      timeout: 5s
-      start_period: 10s
-      retries: 3
-    networks:
-      - boondock
-
   caddy:
     image: caddy:2-alpine
     container_name: boondock-edge-caddy
     restart: unless-stopped
     depends_on:
       - api
-      - dashboard
     env_file:
       - boondock.env
     ports:

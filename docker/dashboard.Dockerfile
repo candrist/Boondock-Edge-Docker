@@ -1,32 +1,32 @@
 # syntax=docker/dockerfile:1
 #
-# Boondock-Edge-Dashboard production image: CRA build stage -> static nginx.
+# Boondock-Edge-Dashboard build image.
+#
+# This does NOT serve the dashboard itself — Boondock-Edge-API already has a
+# built-in catch-all route (app/routes/react.py) that serves a React build
+# from $BOONDOCK_DATA_ROOT/dashboard/, which is how the bare-metal installer
+# runs it too (one service, one origin, no CORS). This image just builds the
+# CRA bundle and, when run, copies it into that same shared volume so the
+# API can serve it — see the one-shot "dashboard-build" service in
+# docker-compose.yml, which mounts boondock_api_data at /data before the api
+# service starts.
 #
 # Build context MUST be the Boondock-Edge-Dashboard submodule directory:
 #   build:
 #     context: ./Boondock-Edge-Dashboard
 #     dockerfile: ../docker/dashboard.Dockerfile
 #     args:
-#       REACT_APP_EDGE_SERVER_ENDPOINT: ${REACT_APP_EDGE_SERVER_ENDPOINT}
 #       DISABLE_ESLINT_PLUGIN: ${DISABLE_ESLINT_PLUGIN:-true}
 
-# ---------- Stage 1: build the CRA static bundle ----------
 FROM node:20-alpine AS build
 
 WORKDIR /app
 
-# CRA bakes REACT_APP_* vars into the JS bundle at BUILD time, not read at
-# container runtime, so this MUST be a build ARG (see boondock.env.sample).
-#
-# IMPORTANT: every call site in this app (src/App.js, LoginPage.js,
-# services/tagsService.js, etc.) builds request URLs as
-# `${edgeServerEndpoint}/branding`, `${edgeServerEndpoint}/auth/login`, etc.
-# The Flask API mounts those routes under /api/... , so this value MUST
-# already include the /api suffix, e.g.:
-#   REACT_APP_EDGE_SERVER_ENDPOINT=https://api.example.com/api
-# Setting it to the bare host (https://api.example.com) will 404 every call.
-ARG REACT_APP_EDGE_SERVER_ENDPOINT
-ENV REACT_APP_EDGE_SERVER_ENDPOINT=${REACT_APP_EDGE_SERVER_ENDPOINT}
+# REACT_APP_EDGE_SERVER_ENDPOINT is deliberately left unset here: every call
+# site in this app (src/App.js, LoginPage.js, services/tagsService.js, etc.)
+# falls back to the relative path '/api' when it's unset, which is exactly
+# right now that the API serves the dashboard from the same origin — no
+# cross-origin URL needs to be baked in at build time.
 
 # NOTE: Boondock-Edge-Dashboard's .gitignore excludes package-lock.json and
 # no lockfile is committed/present in the repo, so `npm ci` (which requires
@@ -64,38 +64,10 @@ ARG DISABLE_ESLINT_PLUGIN=true
 ENV DISABLE_ESLINT_PLUGIN=${DISABLE_ESLINT_PLUGIN}
 RUN npm run build
 
-# ---------- Stage 2: serve the static bundle with nginx ----------
-FROM nginx:1.27-alpine AS runtime
+VOLUME /data
 
-COPY --from=build /app/build /usr/share/nginx/html
-
-# Minimal SPA config: fall back to index.html for client-side routing
-# (react-router-dom) so refreshing on a deep link (e.g. /settings) works,
-# plus a cheap /health endpoint for the container HEALTHCHECK / Caddy.
-RUN cat > /etc/nginx/conf.d/default.conf <<'CONF'
-server {
-    listen 80;
-    server_name _;
-    root /usr/share/nginx/html;
-    index index.html;
-
-    gzip on;
-    gzip_types text/plain text/css application/javascript application/json image/svg+xml;
-
-    location = /health {
-        default_type text/plain;
-        return 200 'ok';
-    }
-
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-}
-CONF
-
-EXPOSE 80
-
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD wget -qO- http://127.0.0.1:80/health >/dev/null 2>&1 || exit 1
-
-CMD ["nginx", "-g", "daemon off;"]
+# Wipe any previous build's output first (SPA static assets are
+# content-hashed per file, e.g. main.a1b2c3.js — without this, old hashed
+# chunks from prior builds would just accumulate under /data/dashboard
+# forever) before copying the fresh build in.
+CMD ["sh", "-c", "rm -rf /data/dashboard && mkdir -p /data/dashboard && cp -a /app/build/. /data/dashboard/"]
