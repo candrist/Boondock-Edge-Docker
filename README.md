@@ -16,22 +16,6 @@ handles SSL automatically via Let's Encrypt.
 - `caddy/Caddyfile` — reverse proxy / TLS config for the combined deployment.
 - `boondock.env.sample` — template for the single shared env file, `boondock.env`.
 
-## Registering the submodules (maintainer, one-time)
-
-`.gitmodules` in this repo currently only *declares* the two submodules —
-until the steps below are run once, they aren't registered as gitlinks and
-`git submodule update --init --recursive` has nothing to pull. From the repo
-root:
-
-    git submodule add https://github.com/Boondock-Echo/Boondock-Edge-API.git Boondock-Edge-API
-    git submodule add https://github.com/Boondock-Echo/Boondock-Edge-Dashboard.git Boondock-Edge-Dashboard
-    git commit -m "Register Boondock-Edge-API and Boondock-Edge-Dashboard submodules"
-    git push
-
-Confirm it worked with `git submodule status` — each submodule should show a
-commit SHA. Once this is done, everyone else just follows "Clone with
-submodules" below; they never need to run `git submodule add` themselves.
-
 ## Getting started
 
 ### 1. Clone with submodules
