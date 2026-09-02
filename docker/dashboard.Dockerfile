@@ -36,6 +36,16 @@ COPY package.json ./
 RUN npm install --no-audit --no-fund
 
 COPY . .
+
+# tsconfig.json in this repo is a stray leftover from an unrelated Next.js
+# project (paths point at "../frontendv2-nextbckp", plugins: [{"name":
+# "next"}]) — there are no .ts/.tsx files and nothing in src/ imports its
+# "@/"/"@legacy/" path aliases. Its mere presence still makes
+# react-scripts' config/modules.js require the "typescript" package (which
+# isn't installed), failing the build with "Cannot find module
+# 'typescript'". Removing it from this build-stage copy only (the submodule
+# itself is untouched) restores plain-JS CRA behavior.
+RUN rm -f tsconfig.json
 RUN npm run build
 
 # ---------- Stage 2: serve the static bundle with nginx ----------
