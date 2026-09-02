@@ -46,6 +46,17 @@ COPY . .
 # 'typescript'". Removing it from this build-stage copy only (the submodule
 # itself is untouched) restores plain-JS CRA behavior.
 RUN rm -f tsconfig.json
+
+# Without a committed package-lock.json (see note above), `npm install`
+# resolves a fresh dependency tree each build, which can pull in an eslint
+# version newer than the one react-scripts 5's bundled
+# eslint-config-react-app was tested against. That mismatch makes the build
+# fail with "eslint-config-react-app/jest#overrides[0]: Environment key
+# 'jest/globals' is unknown" — a lint-config version-drift issue, not an
+# actual problem in this app's code. DISABLE_ESLINT_PLUGIN is CRA's
+# supported flag to skip ESLint checking during the production build;
+# webpack/Babel still fail the build on real syntax/type errors.
+ENV DISABLE_ESLINT_PLUGIN=true
 RUN npm run build
 
 # ---------- Stage 2: serve the static bundle with nginx ----------
