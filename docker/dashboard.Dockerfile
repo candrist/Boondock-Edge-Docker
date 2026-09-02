@@ -8,6 +8,7 @@
 #     dockerfile: ../docker/dashboard.Dockerfile
 #     args:
 #       REACT_APP_EDGE_SERVER_ENDPOINT: ${REACT_APP_EDGE_SERVER_ENDPOINT}
+#       DISABLE_ESLINT_PLUGIN: ${DISABLE_ESLINT_PLUGIN:-true}
 
 # ---------- Stage 1: build the CRA static bundle ----------
 FROM node:20-alpine AS build
@@ -55,8 +56,12 @@ RUN rm -f tsconfig.json
 # 'jest/globals' is unknown" — a lint-config version-drift issue, not an
 # actual problem in this app's code. DISABLE_ESLINT_PLUGIN is CRA's
 # supported flag to skip ESLint checking during the production build;
-# webpack/Babel still fail the build on real syntax/type errors.
-ENV DISABLE_ESLINT_PLUGIN=true
+# webpack/Babel still fail the build on real syntax/type errors. Sourced
+# from boondock.env (next to PRODUCTION_MODE) as a build arg so it can be
+# flipped back to false without editing this Dockerfile, once the Dashboard
+# repo pins compatible eslint versions.
+ARG DISABLE_ESLINT_PLUGIN=true
+ENV DISABLE_ESLINT_PLUGIN=${DISABLE_ESLINT_PLUGIN}
 RUN npm run build
 
 # ---------- Stage 2: serve the static bundle with nginx ----------
