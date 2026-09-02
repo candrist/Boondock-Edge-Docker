@@ -63,10 +63,38 @@ COPY . .
 # even before the volume is first populated.
 RUN mkdir -p /data
 
+# app/routes/react.py serves $BOONDOCK_DATA_ROOT/dashboard/index.html for
+# "/" and any unmatched non-/api path — a leftover from the API's original
+# single-container mode, where the built dashboard is dropped into its data
+# folder. In this split-container setup the dashboard is served by its own
+# nginx container instead, so that file never exists, and every hit throws
+# an unhandled FileNotFoundError (500 + full traceback spamming the logs).
+# This entrypoint seeds a tiny placeholder there on every container start
+# (idempotent) rather than at build time, since `docker compose up` only
+# auto-seeds a volume from image content when the volume is completely
+# empty on first use — an already-populated boondock_api_data volume from
+# an earlier run would never pick up a build-time-only placeholder.
+RUN cat > /usr/local/bin/entrypoint.sh <<'EOF'
+#!/bin/sh
+set -e
+mkdir -p "$BOONDOCK_DATA_ROOT/dashboard"
+if [ ! -f "$BOONDOCK_DATA_ROOT/dashboard/index.html" ]; then
+  cat > "$BOONDOCK_DATA_ROOT/dashboard/index.html" <<'HTML'
+<!doctype html>
+<html><head><title>Boondock Edge API</title></head>
+<body>This is the Boondock Edge API. The dashboard UI is served separately — see APP_DOMAIN.</body></html>
+HTML
+fi
+exec "$@"
+EOF
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
 EXPOSE 4000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
     CMD curl -fsS "http://127.0.0.1:${FLASK_PORT}/api/health/system?current=true" || exit 1
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 # run.py always drives the app via socketio.run() internally (selecting
 # gevent/threading based on PRODUCTION_MODE / PRODUCTION_SERVER /
