@@ -20,9 +20,16 @@ handles SSL automatically via Let's Encrypt.
 
 ### 1. Clone with submodules
 
-    git clone git@github.com:Boondock-Echo/Boondock-Edge-Docker.git
+    git clone https://github.com/candrist/Boondock-Edge-Docker.git
     cd Boondock-Edge-Docker
     git submodule update --init --recursive
+
+(This currently lives under `candrist`; it will move to `Boondock-Echo`
+later, at which point this URL will be updated.)
+
+If you have push access and want to push over SSH instead of HTTPS:
+
+    git remote set-url --push origin git@github.com:candrist/Boondock-Edge-Docker.git
 
 (If you already cloned without `--recursive`, just run the
 `git submodule update --init --recursive` line above from the repo root.)
